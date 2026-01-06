@@ -101,8 +101,8 @@
                                 <i class='bx bx-x-circle clear-icon' id="clearSearchBtn"></i>
                             </div>
                         </div>
+                    
                         
-
                         <div class="card task-creator">
                             <div class="input-row main-input">
                                 <i class='bx bx-plus'></i>
@@ -124,6 +124,7 @@
                                 <button id="addTaskBtn" class="btn-primary" data-i18n="btn_add">Add Task</button>
                             </div>
                         </div>
+                         
                         
                         <div class="card">
                             <div class="card-header-tabs">
@@ -155,24 +156,31 @@
                     </div>
                     </div>
                     
-                    <div class="side-column">
-                        <div class="card">
-                            <div class="card-header"><h3 data-i18n="title_analytics">Analytics</h3></div>
-                            <div class="chart-box"><canvas id="taskChart"></canvas></div>
-                        </div>
-                      <div class="card">
-                            <div class="card-header"><h3>⏰ Reminder</h3></div>
-                            <div class="reminder-box" style="display:flex; gap:5px; flex-direction:column;">
-                                <div style="display:flex; gap:5px;">
-                                    <input type="time" id="reminderTime" class="form-control">
-                                    <button id="setReminderBtn" class="btn-primary" style="padding: 8px 12px;">Set</button>
-                                    <button id="clearReminderBtn" class="btn-danger-outline hidden" style="padding: 8px;"><i class='bx bx-trash'></i></button>
-                                </div>
-                                <div id="reminderStatus" style="font-size: 0.85rem; color: var(--accent); margin-top: 5px; display: none;">
-                                    <i class='bx bx-bell-ring bx-tada'></i> ตั้งปลุกไว้ตอน <span id="alarmTimeDisplay">--:--</span>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="card">
+                        
+    <div class="card">
+    <div class="card-header">
+        <h3><i class='bx bx-line-chart'></i> Productivity</h3>
+    </div>
+    <div class="chart-box" style="height: 140px; margin-bottom: 10px;">
+        <canvas id="productivityChart"></canvas>
+    </div>
+    
+    <div class="stats-mini-row" style="display: flex; justify-content: space-around; text-align: center; font-size: 0.8rem; color: var(--text-light);">
+        <div><strong style="display: block; font-size: 1.1rem; color: var(--accent);" id="statWeekDone">0</strong> Week</div>
+        <div><strong style="display: block; font-size: 1.1rem; color: var(--success);" id="statAvgSpeed">0</strong> Avg/Day</div>
+        <div><strong style="display: block; font-size: 1.1rem; color: var(--danger);" id="statOverdueTotal">0</strong> Overdue</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class='bx bxs-bomb'></i> Procrastination Detector</h3>
+    </div>
+   <div id="procrastinationList" style="max-height: 160px; overflow-y: auto; min-height: 50px; padding-right: 5px;">
+        <p class="text-muted" style="text-align: center; font-size: 0.85rem;">No procrastination detected... yet.</p>
+    </div>
+</div>
 
                         <div class="card">
                             <div class="card-header">
@@ -322,6 +330,68 @@
                             </div>
                         </div>
                     </div>
+                    <div class="card">
+    <div class="card">
+    <div class="card-header">
+        <h3><i class='bx bx-slider-alt'></i> General Preferences</h3>
+    </div>
+    <div class="settings-list">
+        <div class="setting-item">
+            <div class="setting-info">
+                <h4>Sound Effects</h4>
+                <p>เล่นเสียงเมื่อทำภารกิจสำเร็จ (Task Complete)</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="toggleSoundFx" checked>
+                <span class="slider round"></span>
+            </label>
+        </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <h4>Confirm Before Delete</h4>
+                <p>ถามยืนยันทุกครั้งก่อนลบงาน (ป้องกันมือลั่น)</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="toggleConfirmDel" checked>
+                <span class="slider round"></span>
+            </label>
+            
+        </div>
+        <div class="setting-item">
+    <div class="setting-info">
+        <h4>Auto-Move Completed</h4>
+        <p>ย้ายงานที่ทำเสร็จแล้วลงไปไว้ล่างสุดอัตโนมัติ</p>
+    </div>
+    <label class="switch">
+        <input type="checkbox" id="toggleMoveDone" checked>
+        <span class="slider round"></span>
+    </label>
+</div>
+
+<div class="setting-item">
+    <div class="setting-info">
+        <h4>Compact Task View</h4>
+        <p>แสดงรายการงานแบบย่อ (เห็นได้เยอะขึ้น)</p>
+    </div>
+    <label class="switch">
+        <input type="checkbox" id="toggleCompactView">
+        <span class="slider round"></span>
+    </label>
+</div>
+<div class="setting-item">
+    <div class="setting-info">
+        <h4>Smart Priority</h4>
+        <p>ปรับความเร่งด่วนอัตโนมัติตามวันส่งงาน</p>
+    </div>
+    <label class="switch">
+        <input type="checkbox" id="toggleSmartPriority" checked>
+        <span class="slider round"></span>
+    </label>
+</div>
+    </div>
+  
+</div>
 
                     <div class="card hidden" id="securitySection">
                         <div class="card-header">
@@ -364,19 +434,47 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="form-container">
-                            <div class="form-group">
-                                <label data-i18n="label_old_pass">Current Password</label>
-                                <input type="password" id="oldPass" class="form-control">
-                            </div>
-                            <div class="form-group">
-                                <label data-i18n="label_new_pass">New Password</label>
-                                <input type="password" id="newPass" class="form-control">
-                            </div>
-                            <button id="changePassBtn" class="btn-primary" data-i18n="btn_update_pass">Update Password</button>
-                            <p id="passMsg" class="mt-2"></p>
-                        </div>
-                    </div>
+                        <div class="card-header">
+
+<div class="password-change-zone">
+    <h4 class="zone-title"><i class='bx bx-key'></i> Change Password</h4>
+    
+    <div id="btnShowChangePassContainer">
+        <button id="btnShowChangePass" class="btn-secondary" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class='bx bx-lock-open-alt'></i> คลิกเพื่อเปลี่ยนรหัสผ่าน (Click to change password)</span>
+            <i class='bx bx-chevron-right'></i>
+        </button>
+    </div>
+
+    <div id="changePassFormContainer" class="hidden" style="margin-top: 20px; animation: fadeIn 0.3s ease;">
+        <div class="settings-grid-row">
+            <div class="form-group">
+                <label data-i18n="label_old_pass">Current Password</label>
+                <div class="input-icon">
+                    <input type="password" id="oldPass" class="form-control" placeholder="••••••">
+                    <i class='bx bx-lock-alt'></i>
+                    <i class='bx bx-show toggle-pass' style="left: auto; right: 15px; cursor: pointer;"></i>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="label_new_pass">New Password</label>
+                <div class="input-icon">
+                    <input type="password" id="newPass" class="form-control" placeholder="New secure password">
+                    <i class='bx bx-check-shield'></i>
+                    <i class='bx bx-show toggle-pass' style="left: auto; right: 15px; cursor: pointer;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions-right" style="gap: 10px; display: flex; justify-content: flex-end; align-items: center;">
+            <button id="btnCancelChangePass" class="btn-text" style="font-size: 0.9rem;">Cancel</button>
+            <button id="changePassBtn" class="btn-primary">
+                <i class='bx bx-save'></i> <span data-i18n="btn_update_pass">Update Password</span>
+            </button>
+        </div>
+    </div>
+</div>
 
                     <div class="card" id="guestMsgSettings">
                         <div style="text-align: center; padding: 20px; color: var(--text-light);">

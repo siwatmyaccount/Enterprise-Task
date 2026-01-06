@@ -946,3 +946,170 @@ body.dark-mode #taskList::-webkit-scrollbar-thumb:hover {
 .calendar-widget {
     padding-bottom: 10px; /* ลดขอบล่าง */
 }
+
+/* ================= SETTINGS TOGGLE SWITCH ================= */
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--bg-body);
+}
+.setting-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+.setting-info h4 { font-size: 0.95rem; color: var(--text-main); margin-bottom: 2px; }
+.setting-info p { font-size: 0.8rem; color: var(--text-light); }
+
+/* สวิตช์เปิด-ปิด (Toggle Switch) */
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+
+/* สีตอนเปิด (สีฟ้า Accent) */
+input:checked + .slider { background-color: var(--accent); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* ================= COMPACT VIEW SYSTEM ================= */
+
+/* เมื่อเปิดโหมด Compact */
+ul.compact-mode li {
+    padding: 6px 0 !important; /* ลดระยะห่างบนล่าง */
+    font-size: 0.9rem; /* ลดขนาดตัวอักษรนิดนึง */
+}
+
+ul.compact-mode .task-content {
+    gap: 0; /* ลดช่องไฟระหว่างชื่อกับป้าย */
+}
+
+ul.compact-mode .task-meta {
+    transform: scale(0.9); /* ย่อป้าย Tag ลงนิดหน่อย */
+    transform-origin: left center;
+}
+
+ul.compact-mode input[type="checkbox"] {
+    transform: scale(0.9); /* ย่อกล่องติ๊ก */
+}
+
+/* ================= SMART PRIORITY STYLES ================= */
+
+/* ป้าย Overdue (เลยกำหนด) */
+.badge-overdue {
+    background: #7f1d1d; /* สีแดงเลือดหมูเข้ม */
+    color: #fecaca;
+    border: 1px solid #ef4444;
+    animation: pulseRed 2s infinite;
+}
+
+/* แถวของงานที่เร่งด่วน (Urgent Row) */
+li.task-urgent {
+    border-left: 4px solid var(--danger);
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.05), transparent);
+}
+
+/* แถวของงานที่เลยกำหนด (Overdue Row) */
+li.task-overdue {
+    border-left: 4px solid #7f1d1d;
+    background: rgba(127, 29, 29, 0.05);
+    opacity: 0.9;
+}
+
+/* เอฟเฟกต์กระพริบเบาๆ */
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* เพิ่ม Icon ไฟลุกข้างหลังข้องความ */
+.urgent-fire {
+    color: var(--danger);
+    margin-left: 5px;
+    animation: bounce 1s infinite;
+    display: inline-block;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* ============================================================
+   🔧 FIXED: Procrastination List Scrolling (แก้ให้เลื่อนได้ชัวร์)
+   ============================================================ */
+
+#procrastinationList {
+    /* 1. จำกัดความสูงไว้ที่ 160px (ประมาณ 3 งาน) ถ้าเกินจะเลื่อนได้ */
+    max-height: 160px !important; 
+    
+    /* 2. บังคับให้มีแกนเลื่อนแนวตั้ง */
+    overflow-y: auto !important;
+    
+    /* 3. จัดระยะห่างให้น่ามอง */
+    padding-right: 5px; 
+    display: block; /* กันเหนียว */
+}
+
+/* --- ดีไซน์แถบเลื่อน (เหมือน Task List เป๊ะ) --- */
+#procrastinationList::-webkit-scrollbar {
+    width: 6px; /* ความกว้างเท่ารายการงานหลัก */
+}
+
+#procrastinationList::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#procrastinationList::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* สีเทาอ่อน */
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+#procrastinationList::-webkit-scrollbar-thumb:hover {
+    background: var(--accent); /* สีฟ้าเมื่อเอาเมาส์ชี้ */
+}
+
+/* รองรับ Dark Mode */
+body.dark-mode #procrastinationList::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+body.dark-mode #procrastinationList::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+/* ================= SECURITY ZONE STYLES ================= */
+.password-change-zone {
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+}
+
+.zone-title {
+    font-size: 1rem;
+    color: var(--text-main);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* จัดวางแบบ Grid (ซ้าย-ขวา) */
+.settings-grid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* แบ่งครึ่งเท่ากัน */
+    gap: 20px;
+}
+
+/* ปรับให้ Responsive (มือถือเรียงลงมาเหมือนเดิม) */
+@media (max-width: 768px) {
+    .settings-grid-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}

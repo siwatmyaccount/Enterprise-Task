@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Render Tasks & Chart
             renderTasks(); 
-            initChart();
+            updateRealAnalytics(); // ต้องใช้คำนี้ครับ
 
             // Render Profile PRO (ส่วนใหม่)
             renderProfilePro(avUrl);
@@ -367,58 +367,139 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Add Task
-    // ค้นหาโค้ดส่วนนี้ แล้วแทนที่ด้วยชุดนี้ครับ
-    document.getElementById('addTaskBtn').addEventListener('click', () => {
+   // [วางทับจุดที่ 1] ปุ่มเพิ่มงานแบบเก็บข้อมูล Analytics
+    // ==========================================
+    // ✅ ปุ่มเพิ่มงาน (เวอร์ชันสมบูรณ์ + แก้บั๊กงานไม่ขึ้น)
+    // ==========================================
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    
+    // ล้าง Event เก่าทิ้ง (ป้องกันการกดเบิ้ล)
+    const newBtn = addTaskBtn.cloneNode(true);
+    addTaskBtn.parentNode.replaceChild(newBtn, addTaskBtn);
+
+    newBtn.addEventListener('click', () => {
+        // 1. เช็คสิทธิ์
         if (!requireAuth("เพิ่มงาน")) return;
         
+        // 2. ดึงค่า
         const input = document.getElementById('newTask');
         const priority = document.getElementById('taskPriority').value;
         const category = document.getElementById('taskCategory').value;
-        const date = document.getElementById('taskDueDate').value; // สำคัญ: ต้องมีวันที่
+        const date = document.getElementById('taskDueDate').value;
         
         if (input.value.trim()) {
-            // 1. เพิ่มงานลง Array
-            userTasks.push({ text: input.value.trim(), done: false, priority, category, date });
+            // เพิ่มงานเข้า Array
+            userTasks.push({ 
+                text: input.value.trim(), 
+                done: false, 
+                priority, 
+                category, 
+                date,
+                createdDate: new Date().toISOString(),
+                completedDate: null, // ยังไม่เสร็จ ค่าต้องเป็น null
+                postponedCount: 0 
+            });
+            
             saveUserTasks(); 
+            input.value = ""; // ล้างช่องกรอก
+
+            // 🔥 บังคับรีเซ็ตหน้าจอให้เห็นงานทันที
+            currentFilter = 'all'; 
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            const btnAll = document.querySelector('[data-filter="all"]');
+            if(btnAll) btnAll.classList.add('active');
+
+            renderTasks(); // วาดรายการงานใหม่
             
-            // 2. เคลียร์ช่องกรอก
-            input.value = ""; 
+            // อัปเดตกราฟ (แม้จะยังไม่มีข้อมูลใหม่ แต่ให้รีเฟรชรอไว้)
+            if(typeof updateRealAnalytics === 'function') updateRealAnalytics();
+            if(typeof renderCalendar === "function") renderCalendar(currentMonth, currentYear);
             
-            // 3. เรนเดอร์รายการงานใหม่
-            renderTasks(); 
-            
-            // 4. ✅ [เพิ่มตรงนี้] สั่งวาดปฏิทินใหม่ทันที เพื่อให้จุดสีขึ้น
-            if(typeof renderCalendar === "function") {
-                renderCalendar(currentMonth, currentYear);
+            // อัปเดต Profile
+            if(currentUser && typeof renderProfilePro === 'function') {
+                 const avUrl = `https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`;
+                 renderProfilePro(avUrl);
             }
 
-            // 5. อัปเดต Profile XP
-            if(currentUser) {
-                renderProfilePro(`https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`);
-            }
-            
-            showToast("Task added (+XP)", "success");
+            showToast("เพิ่มงานสำเร็จ!", "success");
+
+            // เลื่อนจอลงไปหางานใหม่
+            setTimeout(() => {
+                const list = document.getElementById('taskList');
+                if(list) list.scrollTop = list.scrollHeight;
+            }, 100);
+        } else {
+            showToast("กรุณากรอกชื่องาน", "error");
         }
     });
 
-    // Change Password
+   // ✅ Change Password (เวอร์ชันเช็ครหัสเก่า + ความปลอดภัย)
     const changePassBtn = document.getElementById('changePassBtn');
     if(changePassBtn) {
         changePassBtn.addEventListener('click', () => {
+            // 1. เช็คสิทธิ์ Login
             if (!requireAuth("เปลี่ยนรหัสผ่าน")) return;
-            const newPass = document.getElementById('newPass').value;
-            if(newPass.length >= 4) {
-                const idx = allUsers.findIndex(u => u.username === currentUser.username);
-                if(idx !== -1) {
-                    allUsers[idx].password = newPass;
-                    localStorage.setItem(DB_USERS_KEY, JSON.stringify(allUsers)); // Save DB
-                    showToast("Password Updated", "success");
-                    setTimeout(handleLogout, 1500);
+
+            const oldPassInput = document.getElementById('oldPass');
+            const newPassInput = document.getElementById('newPass');
+            
+            const oldPass = oldPassInput.value;
+            const newPass = newPassInput.value;
+
+            // 2. หา User ในระบบ
+            const idx = allUsers.findIndex(u => u.username === currentUser.username);
+            
+            if(idx !== -1) {
+                // 3. ตรวจสอบรหัสเดิม (เพื่อความปลอดภัย)
+                if(allUsers[idx].password !== oldPass) {
+                    showToast("รหัสผ่านเดิมไม่ถูกต้อง (Wrong current password)", "error");
+                    return;
                 }
-            } else { showToast("Password too short", "error"); }
+
+                // 4. ตรวจสอบรหัสใหม่
+                if(newPass.length < 4) {
+                    showToast("รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร", "warning");
+                    return;
+                }
+
+                if(newPass === oldPass) {
+                    showToast("รหัสผ่านใหม่ซ้ำกับรหัสเดิม", "warning");
+                    return;
+                }
+
+                // 5. บันทึก
+                allUsers[idx].password = newPass;
+                localStorage.setItem(DB_USERS_KEY, JSON.stringify(allUsers)); 
+                
+                showToast("เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบใหม่", "success");
+                
+                // เคลียร์ช่อง
+                oldPassInput.value = "";
+                newPassInput.value = "";
+
+                // บังคับ Logout เพื่อความปลอดภัย
+                setTimeout(handleLogout, 2000);
+            }
         });
     }
+    
+    // ✅ เพิ่มฟังก์ชันกดรูปตา (Show/Hide Password) ให้ทำงานกับช่องใหม่นี้
+    // (โค้ดเดิมของคุณมี .toggle-pass อยู่แล้ว แต่มันอาจจะทำงานแค่ตอนโหลดหน้าแรก 
+    // ถ้ากดแล้วไม่ติด ให้เพิ่มบรรทัดนี้ลงไปท้ายสุดครับ)
+    document.querySelectorAll('.toggle-pass').forEach(i => {
+        // ล้าง Event เก่าก่อนกันเบิ้ล
+        const newIcon = i.cloneNode(true);
+        i.parentNode.replaceChild(newIcon, i);
+        
+        newIcon.addEventListener('click', function() { 
+            const inp = this.parentElement.querySelector('input'); 
+            if(inp) {
+                inp.type = inp.type === 'password' ? 'text' : 'password'; 
+                this.classList.toggle('bx-show'); 
+                this.classList.toggle('bx-hide'); 
+            }
+        });
+    });
     
     // Save Profile (NEW Button)
     const saveProfBtn = document.getElementById('saveProfileBtn');
@@ -511,55 +592,117 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveUserTasks() { if(currentUser) localStorage.setItem(`tasks_${currentUser.username}`, JSON.stringify(userTasks)); }
     function loadUserTasks() { if(currentUser) userTasks = JSON.parse(localStorage.getItem(`tasks_${currentUser.username}`)) || []; }
     
+   // ================= RENDER TASKS (SMART PRIORITY) =================
     function renderTasks(filterText = "") {
         const list = document.getElementById('taskList'); 
         if(!list) return;
         
         list.innerHTML = "";
+        if(userSettings && userSettings.compactView) list.classList.add('compact-mode');
+        else list.classList.remove('compact-mode');
+
         let display = userTasks.map((t, i) => ({...t, index: i}));
         
-        display.sort((a, b) => { if(!a.date) return 1; if(!b.date) return -1; return new Date(a.date) - new Date(b.date); });
-        
+        display.sort((a, b) => { 
+            if(userSettings && userSettings.moveDone) {
+                if (a.done && !b.done) return 1;
+                if (!a.done && b.done) return -1;
+            }
+            if(!a.date) return 1; 
+            if(!b.date) return -1; 
+            return new Date(a.date) - new Date(b.date); 
+        });
+
         if (currentFilter === 'pending') display = display.filter(t => !t.done);
         if (currentFilter === 'completed') display = display.filter(t => t.done);
         if (filterText) display = display.filter(t => t.text.toLowerCase().includes(filterText));
         
         if(display.length===0) list.innerHTML = `<li style="justify-content:center; color:#999;">No tasks found</li>`;
         
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
         display.forEach(t => {
+            let priorityDisplay = t.priority;
+            let badgeClass = t.priority === 'high' ? 'badge-high' : t.priority === 'medium' ? 'badge-medium' : 'badge-normal';
+            let rowClass = "";
+            let extraIcon = "";
+
+            if (userSettings.smartPriority && t.date && !t.done) {
+                const taskDate = new Date(t.date);
+                taskDate.setHours(0,0,0,0);
+                const diffTime = taskDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays < 0) {
+                    priorityDisplay = "OVERDUE";
+                    badgeClass = "badge-overdue";
+                    rowClass = "task-overdue";
+                    extraIcon = "<i class='bx bxs-error-circle' style='color:#ef4444; margin-left:5px;'></i>";
+                } else if (diffDays <= 1) { 
+                    priorityDisplay = "URGENT";
+                    badgeClass = "badge-high";
+                    rowClass = "task-urgent";
+                    extraIcon = "<span class='urgent-fire'>🔥</span>";
+                }
+            }
+            
             const cat = t.category ? `cat-${t.category.toLowerCase()}` : 'cat-work';
-            const badge = t.priority === 'high' ? 'badge-high' : t.priority === 'medium' ? 'badge-medium' : 'badge-normal';
+            
             list.innerHTML += `
-                <li class="${t.done?'completed':''}">
+                <li class="${t.done?'completed':''} ${rowClass}">
                     <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.index})">
                     <div class="task-content">
-                        <span class="task-title">${t.text}</span>
+                        <span class="task-title">${t.text} ${extraIcon}</span>
                         <div class="task-meta">
                             <span class="cat-badge ${cat}">${t.category}</span>
-                            <span class="badge ${badge}">${t.priority}</span>
-                            ${t.date ? t.date : ''}
+                            <span class="badge ${badgeClass}">${priorityDisplay}</span>
+                            ${t.date ? `<span style="${rowClass.includes('overdue') ? 'color:#ef4444; font-weight:bold;' : ''}">${t.date}</span>` : ''}
                         </div>
                     </div>
-                    <button class="btn-icon-only" onclick="deleteTask(${t.index})"><i class='bx bx-trash'></i></button>
+                    
+                    ${!t.done && t.date ? `
+                    <button class="btn-icon-only" onclick="postponeTask(${t.index})" title="เลื่อนไปพรุ่งนี้ (+1 วัน)" style="margin-right:5px;">
+                        <i class='bx bx-time-five' style="color:var(--warning);"></i>
+                    </button>` : ''}
+                    
+                    <button class="btn-icon-only btn-delete" onclick="deleteTask(${t.index})"><i class='bx bx-trash'></i></button>
                 </li>`;
         });
         updateStats(userTasks.length, userTasks.filter(t=>t.done).length);
     }
 
     // Global Functions for HTML onClick
+   // ==========================================
     window.toggleTask = function(i) { 
+        // 1. สลับสถานะ เสร็จ/ไม่เสร็จ
         userTasks[i].done = !userTasks[i].done; 
+        
+        // 2. ถ้าเสร็จ ให้บันทึกเวลาปัจจุบัน (สำคัญมาก! กราฟใช้ค่านี้)
+        if(userTasks[i].done) {
+            userTasks[i].completedDate = new Date().toISOString(); 
+            // เล่นเสียงเอฟเฟกต์ (ถ้ามีฟังก์ชันนี้)
+            if(typeof playSoundSuccess === 'function') playSoundSuccess();
+            showToast("เยี่ยมมาก! งานเสร็จแล้ว 🎉", "success");
+        } else {
+            // ถ้าติ๊กออก ให้ลบเวลาทิ้ง
+            userTasks[i].completedDate = null; 
+        }
+        
+        // 3. บันทึกข้อมูลลงเครื่อง
         saveUserTasks(); 
+        
+        // 4. เรนเดอร์หน้าจอใหม่
         renderTasks();
-        // อัปเดต Profile ทันทีเมื่อติ๊กเสร็จ
-        if(currentUser) renderProfilePro(`https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`);
-    }
-    
-    window.deleteTask = function(i) { 
-        userTasks.splice(i, 1); 
-        saveUserTasks(); 
-        renderTasks();
-        if(currentUser) renderProfilePro(`https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`);
+        
+        // 5. สั่งอัปเดตกราฟทันที! (บรรทัดนี้แหละที่หายไป)
+        if(typeof updateRealAnalytics === 'function') updateRealAnalytics();
+
+        // อัปเดต Profile
+        if(currentUser && typeof renderProfilePro === 'function') {
+            const avUrl = `https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`;
+            renderProfilePro(avUrl);
+        }
     }
 
     function updateStats(total, completed) { 
@@ -1082,11 +1225,421 @@ document.addEventListener('DOMContentLoaded', () => {
             noteStatus.textContent = "Saved manually";
         });
     }
+    // ================= GENERAL PREFERENCES SYSTEM (UPDATED) =================
+    
+    let userSettings = {
+        soundFx: true,
+        confirmDel: true,
+        moveDone: true,      // (ใหม่) ย้ายงานเสร็จลงล่าง
+        compactView: false,
+        smartPriority: true  
+    };
 
-    // ⚠️ สำคัญ: ต้องเอาฟังก์ชัน init ไปใส่ใน loginUser ด้วย
+    function initSettings() {
+        // 1. โหลดค่า
+        const saved = localStorage.getItem('app_settings');
+        if(saved) userSettings = JSON.parse(saved);
+
+        // 2. เชื่อมต่อปุ่มสวิตช์ต่างๆ
+        setupToggle('toggleSoundFx', 'soundFx');
+        setupToggle('toggleConfirmDel', 'confirmDel');
+        
+        // (ใหม่) สวิตช์ย้ายงาน
+        setupToggle('toggleMoveDone', 'moveDone', () => {
+            renderTasks(); // กดปุ๊บ เรียงใหม่ปั๊บ
+        });
+
+        // (ใหม่) สวิตช์ Compact
+        setupToggle('toggleCompactView', 'compactView', () => {
+            renderTasks(); // กดปุ๊บ เปลี่ยนทรงปั๊บ
+        });
+
+        // ในฟังก์ชัน initSettings()
+        setupToggle('toggleSmartPriority', 'smartPriority', () => {
+            renderTasks();
+         });    
+    }
+
+    // ฟังก์ชันช่วยเชื่อมปุ่ม (Helper)
+    function setupToggle(id, key, callback) {
+        const el = document.getElementById(id);
+        if(el) {
+            el.checked = userSettings[key];
+            el.addEventListener('change', (e) => {
+                userSettings[key] = e.target.checked;
+                saveSettings();
+                if(callback) callback();
+            });
+        }
+    }
+
+    function saveSettings() {
+        localStorage.setItem('app_settings', JSON.stringify(userSettings));
+    }
+
+    function playSoundSuccess() {
+        if(!userSettings.soundFx) return;
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'); 
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log(e));
+    }
+
+    // ================= OVERRIDE FUNCTIONS (แก้ของเดิม) =================
+
+    // 1. แก้ deleteTask ให้เช็ค "ยืนยันก่อนลบ"
+    window.deleteTask = function(i) { 
+        if(userSettings.confirmDel) {
+            // ถ้าเปิด setting ไว้ ให้ถามก่อน
+            if(!confirm("คุณต้องการลบงานนี้ใช่หรือไม่?")) return;
+        }
+        // ลบเลย
+        userTasks.splice(i, 1); 
+        saveUserTasks(); 
+        renderTasks(); 
+        if(typeof renderCalendar === 'function' && typeof currentMonth !== 'undefined') renderCalendar(currentMonth, currentYear);
+        if(typeof renderProfilePro === 'function') renderProfilePro(`https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`);
+    }
+
+    // 2. แก้ toggleTask ให้มี "เสียงเอฟเฟกต์"
+    window.toggleTask = function(i) { 
+        userTasks[i].done = !userTasks[i].done; 
+        
+        // ถ้าติ๊กถูก (ทำเสร็จ) ให้เล่นเสียง
+        if(userTasks[i].done) {
+            playSoundSuccess();
+            showToast("Task Completed! Great Job!", "success");
+        }
+        
+        saveUserTasks(); 
+        renderTasks();
+        if(typeof renderProfilePro === 'function') renderProfilePro(`https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`);
+    }
+    // [วางเพิ่มท้ายไฟล์] ฟังก์ชันระบบ Analytics ใหม่ และ Postpone
+    
+    // 1. ฟังก์ชันเลื่อนวัน
+    window.postponeTask = function(index) {
+        const task = userTasks[index];
+        if(!task.date) {
+            showToast("งานนี้ไม่มีวันที่กำหนด", "error");
+            return;
+        }
+        const currentDate = new Date(task.date);
+        currentDate.setDate(currentDate.getDate() + 1);
+        task.date = currentDate.toISOString().split('T')[0];
+        
+        task.postponedCount = (task.postponedCount || 0) + 1;
+        
+        saveUserTasks();
+        renderTasks();
+        updateRealAnalytics();
+        showToast(`เลื่อนงานไปพรุ่งนี้แล้ว (ครั้งที่ ${task.postponedCount})`, "warning");
+    }
+
+    // 2. ฟังก์ชันคำนวณกราฟ Productivity
+    function updateRealAnalytics() {
+        const ctx = document.getElementById('productivityChart');
+        if(ctx) {
+            const labels = [];
+            const dataPoints = [];
+            const today = new Date();
+            
+            for(let i=6; i>=0; i--) {
+                const d = new Date();
+                d.setDate(today.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                labels.push(d.toLocaleDateString('en-US', {weekday:'short'}));
+                // นับเฉพาะงานที่มี completedDate ตรงกับวันนี้
+                const count = userTasks.filter(t => t.done && t.completedDate && t.completedDate.startsWith(dateStr)).length;
+                dataPoints.push(count);
+            }
+
+            if(window.myProductivityChart) window.myProductivityChart.destroy();
+            
+            window.myProductivityChart = new Chart(ctx, {
+                type: 'bar', // เปลี่ยนเป็นกราฟแท่ง
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tasks Done',
+                        data: dataPoints,
+                        backgroundColor: '#2563eb',
+                        borderRadius: 4,
+                        barThickness: 12
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false }, ticks: { stepSize: 1 } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // อัปเดตตัวเลข
+            const weekTotal = dataPoints.reduce((a,b) => a+b, 0);
+            const elWeek = document.getElementById('statWeekDone');
+            const elAvg = document.getElementById('statAvgSpeed');
+            const elOver = document.getElementById('statOverdueTotal');
+            
+            if(elWeek) elWeek.textContent = weekTotal;
+            if(elAvg) elAvg.textContent = (weekTotal / 7).toFixed(1);
+            if(elOver) elOver.textContent = userTasks.filter(t => !t.done && t.date && new Date(t.date) < new Date().setHours(0,0,0,0)).length;
+        }
+
+        // 3. อัปเดตรายการงานดอง
+        const procList = document.getElementById('procrastinationList');
+        if(procList) {
+            const lazyTasks = userTasks
+                .filter(t => !t.done && t.postponedCount > 0)
+                .sort((a,b) => b.postponedCount - a.postponedCount)
+                .slice(0, 3);
+
+            if(lazyTasks.length > 0) {
+                procList.innerHTML = `<ul class="corporate-list" style="margin:0;">` + 
+                lazyTasks.map(t => `
+                    <li style="padding: 8px 0; border-bottom: 1px solid var(--bg-body); font-size: 0.85rem;">
+                        <div style="flex:1;">
+                            <span style="display:block; color:var(--text-main); font-weight:500;">${t.text}</span>
+                            <span style="font-size:0.75rem; color:var(--text-light);">Original due date changed</span>
+                        </div>
+                        <div class="badge-overdue" style="padding: 4px 8px; font-size:0.75rem; border-radius:12px;">
+                            เลื่อน ${t.postponedCount} ครั้ง
+                        </div>
+                    </li>
+                `).join('') + `</ul>`;
+            } else {
+                procList.innerHTML = `<div style="text-align:center; padding:15px; color:var(--success);"><i class='bx bx-check-shield' style="font-size:2rem; margin-bottom:5px;"></i><p style="font-size:0.85rem;">Great! No procrastination detected.</p></div>`;
+            }
+        }
+    } 
+
+    // ============================================================
+    // 🔧 EMERGENCY FIX: โค้ดซ่อมระบบกราฟและข้อมูล (วางท้ายสุดของไฟล์)
+    // ============================================================
+    
+    // 1. ซ่อมข้อมูลงานทั้งหมด (Data Repair)
+    // เช็คงานที่ "เสร็จแล้ว" แต่ไม่มี "วันที่เสร็จ" ให้เติมวันที่ปัจจุบันเข้าไป
+    if(currentUser && userTasks.length > 0) {
+        let fixedCount = 0;
+        userTasks.forEach(t => {
+            // ถ้าเสร็จแล้ว แต่ไม่มี completedDate หรือ postponeCount
+            if(t.done && !t.completedDate) {
+                t.completedDate = new Date().toISOString(); // เติมเวลาปัจจุบัน
+                fixedCount++;
+            }
+            if(typeof t.postponedCount === 'undefined') t.postponedCount = 0;
+        });
+        
+        if(fixedCount > 0) {
+            saveUserTasks();
+            console.log(`🔧 ซ่อมข้อมูลงานเก่าแล้ว ${fixedCount} งาน`);
+        }
+    }
+
+    // 2. ทับฟังก์ชัน Toggle Task ให้มั่นใจว่าทำงานถูก 100%
+    window.toggleTask = function(i) {
+        userTasks[i].done = !userTasks[i].done;
+        
+        if(userTasks[i].done) {
+            // บันทึกเวลาเมื่อกดเสร็จ
+            userTasks[i].completedDate = new Date().toISOString(); 
+            if(typeof playSoundSuccess === 'function') playSoundSuccess();
+            showToast("ภารกิจสำเร็จ! (กราฟอัปเดตแล้ว)", "success");
+        } else {
+            userTasks[i].completedDate = null;
+        }
+        
+        saveUserTasks();
+        renderTasks();
+        
+        // บังคับอัปเดตกราฟทันที พร้อม Log ตรวจสอบ
+        console.log("📊 Updating Chart... Data:", userTasks[i]);
+        if(typeof updateRealAnalytics === 'function') updateRealAnalytics();
+        
+        if(currentUser && typeof renderProfilePro === 'function') {
+            const avUrl = `https://ui-avatars.com/api/?name=${currentUser.username}&background=2563eb&color=fff&bold=true`;
+            renderProfilePro(avUrl);
+        }
+    };
+
+    // 3. ทับฟังก์ชันวาดกราฟ (เพื่อ Debug ดูว่าข้อมูลมาไหม)
+   // ✅ ฟังก์ชันอัปเดต Analytics (เวอร์ชันสมบูรณ์: กราฟ + จับงานดอง)
+    window.updateRealAnalytics = function() {
+        // --- ส่วนที่ 1: อัปเดตกราฟ Productivity ---
+        const ctx = document.getElementById('productivityChart');
+        if(ctx) { 
+            const labels = [];
+            const dataPoints = [];
+            const today = new Date();
+            
+            // ดึง 7 วันย้อนหลัง
+            for(let i=6; i>=0; i--) {
+                const d = new Date();
+                d.setDate(today.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0]; 
+                
+                labels.push(d.toLocaleDateString('en-US', {weekday:'short'}));
+                
+                // นับงานที่เสร็จ
+                const count = userTasks.filter(t => 
+                    t.done && 
+                    t.completedDate && 
+                    t.completedDate.startsWith(dateStr)
+                ).length;
+                
+                dataPoints.push(count);
+            }
+
+            if(window.myProductivityChart) window.myProductivityChart.destroy();
+            
+            window.myProductivityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tasks Done',
+                        data: dataPoints,
+                        backgroundColor: '#2563eb',
+                        borderRadius: 4,
+                        barThickness: 12
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false }, ticks: { stepSize: 1 } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+            
+            // อัปเดตตัวเลขสรุป
+            const weekTotal = dataPoints.reduce((a,b) => a+b, 0);
+            const elWeek = document.getElementById('statWeekDone');
+            if(elWeek) elWeek.textContent = weekTotal;
+        }
+
+        // --- ส่วนที่ 2: อัปเดต Procrastination Detector (จับงานดอง) ---
+        const procList = document.getElementById('procrastinationList');
+        if(procList) {
+            // กรองหา: 1.ยังไม่เสร็จ (!t.done) และ 2.เคยเลื่อนมาแล้ว (postponedCount > 0)
+            const lazyTasks = userTasks
+                .filter(t => !t.done && t.postponedCount > 0) // <-- บรรทัดนี้สำคัญ! ถ้า done แล้วจะหายไป
+                .sort((a,b) => b.postponedCount - a.postponedCount)
+                .slice(0, 20);
+
+            if(lazyTasks.length > 0) {
+                procList.innerHTML = `<ul class="corporate-list" style="margin:0;">` + 
+                lazyTasks.map(t => `
+                    <li style="padding: 8px 0; border-bottom: 1px solid var(--bg-body); font-size: 0.85rem;">
+                        <div style="flex:1;">
+                            <span style="display:block; color:var(--text-main); font-weight:500;">${t.text}</span>
+                            <span style="font-size:0.75rem; color:var(--text-light);">Original due date changed</span>
+                        </div>
+                        <div class="badge-overdue" style="padding: 4px 8px; font-size:0.75rem; border-radius:12px;">
+                            เลื่อน ${t.postponedCount} ครั้ง
+                        </div>
+                    </li>
+                `).join('') + `</ul>`;
+            } else {
+                procList.innerHTML = `<div style="text-align:center; padding:15px; color:var(--success);"><i class='bx bx-check-shield' style="font-size:2rem; margin-bottom:5px;"></i><p style="font-size:0.85rem;">เยี่ยมมาก! ไม่มีงานดอง</p></div>`;
+            }
+        }
+    }
+
+    // ==========================================
+    // 🔐 ระบบ Toggle ฟอร์มเปลี่ยนรหัสผ่าน (ใหม่)
+    // ==========================================
+    const btnShowPass = document.getElementById('btnShowChangePass');
+    const btnCancelPass = document.getElementById('btnCancelChangePass');
+    const formPassContainer = document.getElementById('changePassFormContainer');
+    const btnShowPassContainer = document.getElementById('btnShowChangePassContainer');
+
+    if(btnShowPass && formPassContainer) {
+        // เมื่อกดปุ่ม "คลิกเพื่อเปลี่ยนรหัสผ่าน"
+        btnShowPass.addEventListener('click', () => {
+            // ซ่อนปุ่มเปิด
+            btnShowPassContainer.classList.add('hidden');
+            // โชว์ฟอร์ม
+            formPassContainer.classList.remove('hidden');
+        });
+    }
+
+    if(btnCancelPass) {
+        // เมื่อกดปุ่ม "Cancel"
+        btnCancelPass.addEventListener('click', () => {
+            // ซ่อนฟอร์ม
+            formPassContainer.classList.add('hidden');
+            // โชว์ปุ่มเปิดกลับมา
+            btnShowPassContainer.classList.remove('hidden');
+            
+            // ล้างค่าที่กรอกค้างไว้
+            document.getElementById('oldPass').value = "";
+            document.getElementById('newPass').value = "";
+        });
+    }
+    
+    // อัปเกรด: เมื่อเปลี่ยนรหัสสำเร็จ ให้พับเก็บฟอร์มอัตโนมัติ
+    // (เราต้องไปดักจับ Event ของปุ่ม changePassBtn เดิม แล้วสั่งให้มันพับฟอร์มเก็บ)
+    const realChangeBtn = document.getElementById('changePassBtn');
+    if(realChangeBtn) {
+        // ใช้เทคนิคเพิ่ม Listener ซ้อนเข้าไป (มันจะทำงานต่อจากอันเก่า)
+        realChangeBtn.addEventListener('click', () => {
+            // รอสัก 1 วิ (เผื่อโค้ดเก่าทำงานเสร็จ) แล้วค่อยเช็คว่าถ้าสำเร็จให้ปิดฟอร์ม
+            setTimeout(() => {
+                const oldPassVal = document.getElementById('oldPass').value;
+                if(oldPassVal === "") { 
+                    // ถ้าช่องว่างแปลว่าเปลี่ยนสำเร็จและถูกเคลียร์ค่าแล้ว -> ให้กดปุ่ม Cancel เพื่อพับจอเก็บ
+                    if(btnCancelPass) btnCancelPass.click();
+                }
+            }, 1000);
+        });
+    }
+
+    // ==========================================
+    // 👁️ FIX: แก้ปุ่มลูกตา (Show/Hide Password) ให้ทำงานชัวร์ 100%
+    // ==========================================
+    setTimeout(() => {
+        const eyes = document.querySelectorAll('.toggle-pass');
+        eyes.forEach(eye => {
+            // 1. สร้างปุ่มใหม่มาแทนอันเดิม (เพื่อล้างคำสั่งเก่าที่ซ้ำซ้อนทิ้งให้หมด)
+            const newEye = eye.cloneNode(true);
+            eye.parentNode.replaceChild(newEye, eye);
+
+            // 2. ปรับ CSS ให้มั่นใจว่ากดติดง่ายๆ (อยู่บนสุด)
+            newEye.style.cursor = "pointer";
+            newEye.style.zIndex = "10"; 
+
+            // 3. ใส่คำสั่งใหม่เข้าไปแค่ชุดเดียว
+            newEye.addEventListener('click', function() {
+                // หาช่อง Input ที่อยู่ข้างๆ มัน
+                const input = this.parentElement.querySelector('input');
+                
+                if (input) {
+                    // สลับ Text <-> Password
+                    const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                    input.setAttribute('type', type);
+                    
+                    // สลับไอคอน (ตาเปิด/ตาปิด)
+                    this.classList.toggle('bx-show');
+                    this.classList.toggle('bx-hide');
+                }
+            });
+        });
+        console.log(`✅ Fixed ${eyes.length} password toggles.`);
+    }, 1000); // รอ 1 วินาทีให้หน้าเว็บโหลดครบก่อนค่อยแก้
+    // รันกราฟทันทีตอนเปิด
+    setTimeout(updateRealAnalytics, 500);
+   
     initApp();
     // ...
-setupRandomQuote();
-initCalendar(); // <--- เติมตรงนี้ครับ
-// ...
+    setupRandomQuote();
+    initCalendar();
+    initSettings();
+    // ...
 });
