@@ -489,11 +489,18 @@
     </main>
 
     <div id="auth-view" class="auth-overlay hidden">
-        <div class="auth-modal animate-fade-in" id="login-box">
+<div class="auth-modal animate-fade-in" id="login-box">
             <button type="button" class="btn-close-modal">✕</button>
             <div class="auth-header"><h2>Welcome Back</h2><p>Sign In / เข้าสู่ระบบ</p></div>
             <form id="loginForm" autocomplete="off">
-                <div class="form-group"><label>Username</label><div class="input-icon"><input type="text" id="loginUser" required placeholder="ID"><i class='bx bx-user'></i></div></div>
+                <div class="form-group">
+                    <label>Username / Email</label> 
+                    <div class="input-icon">
+                        <input type="text" id="loginUser" required placeholder="Username or Email">
+                        <i class='bx bx-user'></i>
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <label>Password</label>
                     <div class="input-icon"><input type="password" id="loginPass" required placeholder="Password"><i class='bx bx-lock-alt'></i><i class='bx bx-show toggle-pass' style="left: auto; right: 15px;"></i></div>
@@ -508,8 +515,23 @@
             <button type="button" class="btn-close-modal">✕</button>
             <div class="auth-header"><h2>New Account</h2><p>Register / สมัครสมาชิก</p></div>
             <form id="registerForm" autocomplete="off">
-                <div class="form-group"><label>Username</label><div class="input-icon"><input type="text" id="regUser" required placeholder="Choose a username"><i class='bx bx-user-plus'></i></div></div>
-                <div class="form-group"><label>Password</label><div class="input-icon"><input type="password" id="regPass" required placeholder="Create a password"><i class='bx bx-shield-quarter'></i></div></div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="input-icon"><input type="text" id="regUser" required placeholder="Choose a username"><i class='bx bx-user-plus'></i></div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="input-icon">
+                        <input type="email" id="regEmail" required placeholder="name@example.com">
+                        <i class='bx bx-envelope'></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-icon"><input type="password" id="regPass" required placeholder="Create a password"><i class='bx bx-shield-quarter'></i></div>
+                </div>
                 <div class="actions-right"><button type="submit" class="btn-primary">Register / สมัครสมาชิก</button></div>
                 <div class="auth-footer"><a href="#" data-target="login-box">Back to Login / กลับหน้าเข้าสู่ระบบ</a></div>
             </form>
@@ -519,13 +541,21 @@
             <button type="button" class="btn-close-modal">✕</button>
             <div class="auth-header"><h2>Reset Password</h2><p>กู้คืนรหัสผ่าน</p></div>
             <form id="forgotForm">
-                <div class="form-group"><label>Username</label><div class="input-icon"><input type="text" id="forgotEmail" required placeholder="Your username"><i class='bx bx-user'></i></div></div>
-                <div class="form-group"><label>New Password</label><div class="input-icon"><input type="password" id="forgotNewPass" required placeholder="New password"><i class='bx bx-key'></i></div></div>
+                <div class="form-group">
+                    <label>Username / Email</label>
+                    <div class="input-icon">
+                        <input type="text" id="forgotEmail" required placeholder="Username or Email">
+                        <i class='bx bx-user'></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <div class="input-icon"><input type="password" id="forgotNewPass" required placeholder="New password"><i class='bx bx-key'></i></div>
+                </div>
                 <div class="actions-right"><button type="submit" class="btn-primary">Reset Password / เปลี่ยนรหัส</button></div>
                 <div class="auth-footer"><a href="#" data-target="login-box">Back to Login / กลับหน้าเข้าสู่ระบบ</a></div>
             </form>
         </div>
-    </div>
 
     <script src="app.js"></script>
 </body>

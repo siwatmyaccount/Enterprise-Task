@@ -116,11 +116,25 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(`Welcome ${currentUser.username}`, "success");
     }
 
-    function registerUser(username, password) {
+    // ✅ แก้ไข: รับค่า email เข้ามาด้วย
+    function registerUser(username, password, email) {
+        // เช็คว่า Username ซ้ำไหม
         if (allUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-            showToast("Username taken / มีชื่อนี้แล้ว", "error"); return false;
+            showToast("Username taken / มีชื่อผู้ใช้นี้แล้ว", "error"); return false;
         }
-        const newUser = { username, password, email: `${username}@mail.com`, joined: new Date().toLocaleDateString() };
+        // เช็คว่า Email ซ้ำไหม (เพิ่มใหม่)
+        if (allUsers.some(u => u.email && u.email.toLowerCase() === email.toLowerCase())) {
+            showToast("Email already registered / อีเมลนี้ถูกใช้แล้ว", "error"); return false;
+        }
+
+        // สร้าง User ใหม่พร้อมอีเมลจริง
+        const newUser = { 
+            username, 
+            password, 
+            email: email, // ใช้อีเมลที่กรอกมา
+            joined: new Date().toLocaleDateString() 
+        };
+        
         allUsers.push(newUser);
         localStorage.setItem(DB_USERS_KEY, JSON.stringify(allUsers));
         showToast("สมัครสมาชิกสำเร็จ! กรุณาล็อกอิน", "success");
@@ -325,28 +339,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // ================= EVENTS & HANDLERS =================
 
     // Login Form
+   // ✅ แก้ไข: ล็อกอินด้วย Username หรือ Email ก็ได้
     const loginForm = document.getElementById('loginForm');
     if(loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const user = document.getElementById('loginUser').value.trim();
+            const inputVal = document.getElementById('loginUser').value.trim(); // รับค่าเป็น Username หรือ Email
             const pass = document.getElementById('loginPass').value.trim();
-            const found = allUsers.find(u => u.username === user && u.password === pass);
+            
+            // ค้นหา User ที่ชื่อตรง หรือ อีเมลตรง
+            const found = allUsers.find(u => 
+                (u.username.toLowerCase() === inputVal.toLowerCase() || 
+                 (u.email && u.email.toLowerCase() === inputVal.toLowerCase())) && 
+                u.password === pass
+            );
+
             if (found) loginUser(found, false, true);
-            else showToast("Username or Password incorrect", "error");
+            else showToast("ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง", "error");
         });
     }
 
     // Register Form
+  // ✅ แก้ไข: ส่งค่า email ไปให้ฟังก์ชัน registerUser
     const regForm = document.getElementById('registerForm');
     if(regForm) {
         regForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const user = document.getElementById('regUser').value.trim();
             const pass = document.getElementById('regPass').value.trim();
-            if(user && pass && registerUser(user, pass)) {
-                setTimeout(() => switchAuthBox('login-box'), 1000);
-                regForm.reset();
+            // ดึงค่าอีเมล
+            const email = document.getElementById('regEmail').value.trim();
+
+            if(user && pass && email) {
+                if(registerUser(user, pass, email)) {
+                    setTimeout(() => switchAuthBox('login-box'), 1000);
+                    regForm.reset();
+                }
             }
         });
     }
